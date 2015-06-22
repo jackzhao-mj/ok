@@ -1205,6 +1205,7 @@ class SubmissionAPI(APIResource):
                     'late': True,
                     })
 
+        models.Participant.add_role(user, valid_assignment.course, STUDENT_ROLE)
         submission = self.db.create_submission(user, valid_assignment,
                                                messages, submit, submitter)
         return (201, 'success', {
@@ -1575,7 +1576,7 @@ class CourseAPI(APIResource):
         The POST HTTP method
         """
         return super(CourseAPI, self).post(user, data)
-    
+
     def index(self, user, data):
         if data['onlyenrolled']:
             return dict(results=[result.course for result in models.Participant.query(
