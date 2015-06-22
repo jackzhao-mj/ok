@@ -1191,26 +1191,39 @@ class SubmissionAPI(APIResource):
 
         if submit and late_flag:
             if revision:
-                # In the revision period. Ensure that user has a previously graded submission.
+                # In revision period. Ensure user has a previously graded submission.
                 fs = user.get_final_submission(valid_assignment)
                 if fs is None or fs.submission.get().score == []:
                     logging.info('Rejecting Revision without graded FS', submitter)
                     return (403, 'Previous submission was not graded', {
                       'late': True,
-                      })
+                    })
             else:
                 # Late submission. Do not allow them to submit
                 logging.info('Rejecting Late Submission', submitter)
                 return (403, 'late', {
                     'late': True,
-                    })
+                 })
 
-        models.Participant.add_role(user, valid_assignment.course, STUDENT_ROLE)
         submission = self.db.create_submission(user, valid_assignment,
                                                messages, submit, submitter)
+
+        # Check enrollment
+        course = valid_assignment.course.get()
+        if course.auto_enroll:
+            models.Participant.add_role(user, course, STUDENT_ROLE)
+        else:
+            if not models.Participant.has_role(user, course, STUDENT_ROLE):
+                logging.info('Submission from un-enrolled', submitter)
+                return (403, 'unenrolled', {
+                    'key': submission.key.id(),
+                    'course': course.id(),
+                    'email': user.email[0]
+                })
+
         return (201, 'success', {
             'key': submission.key.id(),
-            'course': valid_assignment.course.id(),
+            'course': course.id(),
             'email': user.email[0]
         })
 
@@ -1504,15 +1517,16 @@ class CourseAPI(APIResource):
                 'institution': Arg(str, required=True),
                 'offering': Arg(str, required=True),
                 'active': BooleanArg(),
+                'auto_enroll': BooleanArg(),
             }
         },
         'put': {
             'web_args': {
                 'display_name': Arg(str),
                 'institution': Arg(str),
-                'term': Arg(str),
-                'year': Arg(str),
+                'offering': Arg(str, required=True),
                 'active': BooleanArg(),
+                'auto_enroll': BooleanArg(),
             }
         },
         'delete': {
@@ -1570,12 +1584,6 @@ class CourseAPI(APIResource):
         'get_students': {
         }
     }
-
-    def post(self, user, data):
-        """
-        The POST HTTP method
-        """
-        return super(CourseAPI, self).post(user, data)
 
     def index(self, user, data):
         if data['onlyenrolled']:

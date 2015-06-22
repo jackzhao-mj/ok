@@ -439,6 +439,7 @@ class Course(Base):
     display_name = ndb.StringProperty()
     instructor = ndb.KeyProperty(User, repeated=True)
     active = ndb.BooleanProperty(default=True)
+    auto_enroll = ndb.BooleanProperty(default=True)
 
     @property
     def staff(self):
