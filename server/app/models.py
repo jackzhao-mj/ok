@@ -504,6 +504,20 @@ class Assignment(Base):
 
     # TODO Add services requested
 
+    # To hide autograder data.
+    def to_json(self, fields=None):
+      sensitive_fields = ['grading_script_file',
+       'zip_file_url', 'autograding_enabled']
+
+      assign_json = super(Assignment, self).to_json(fields)
+
+      for field in sensitive_fields:
+        if field in assign_json:
+          del assign_json[field]
+
+      return assign_json
+
+
     @classmethod
     def _can(cls, user, need, obj, query):
         if need.action == "index":
